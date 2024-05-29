@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sidebarx/sidebarx.dart';
 
 void main() {
   runApp(StudyApp());
@@ -25,22 +26,81 @@ class HomePage extends StatelessWidget {
         children: [
           // Left Sidebar
           Container(
-            width: MediaQuery.of(context).size.width/10,
-            child: Container(
-              decoration: BoxDecoration(borderRadius:BorderRadius.only(topRight: Radius.circular(30), bottomRight: Radius.circular(30)), color: Colors.blue[100],),
-              
-              child: Column(
-                children: [
-                  SizedBox(height: 50),
-                  Text(
-                    'Studious',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 20),
-                  Container(width: MediaQuery.of(context).size.width/20, decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(100)), child: IconButton(onPressed: () {}, icon: Icon(Icons.home)))
-                ],
+      width: MediaQuery.of(context).size.width / 5, // Slightly wider for better usability
+      child: SidebarX(
+        theme: SidebarXTheme(
+          margin: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.grey[900],
+          ),
+          hoverColor: Colors.grey[700],
+          textStyle: TextStyle(color: Colors.white70, fontSize: 16),
+          selectedTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          itemTextPadding: EdgeInsets.symmetric(horizontal: 20),
+          itemDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            color: Colors.transparent,
+          ),
+          selectedItemDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            color: Colors.blueAccent.withOpacity(0.8),
+          ),
+          iconTheme: IconThemeData(
+            color: Colors.white70,
+            size: 24,
+          ),
+          selectedIconTheme: IconThemeData(
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+        headerBuilder: (context, extended) {
+          return Container(
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
               ),
             ),
+            child: Center(
+              child: CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.black,
+              ),
+            ),
+          );
+        },
+        controller: SidebarXController(selectedIndex: 0),
+        items: const [
+          SidebarXItem(icon: Icons.home, label: 'Home'),
+          SidebarXItem(icon: Icons.school, label: 'Study'),
+          SidebarXItem(icon: Icons.assessment, label: 'Performance')
+        ],
+      ),
+    ),
+            // child: Container(
+            //   decoration: BoxDecoration(borderRadius:BorderRadius.only(topRight: Radius.circular(30), bottomRight: Radius.circular(30)), color: Colors.blue[100],),
+              
+            //   child: Column(
+            //     children: [
+            //       SizedBox(height: 50),
+            //       Text(
+            //         'Studious',
+            //         style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            //       ),
+            //       SizedBox(height: 20),
+            //       Container(width: MediaQuery.of(context).size.width/20, decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(100)), child: IconButton(onPressed: () {}, icon: Icon(Icons.home))),
+            //       SizedBox(height: 20),
+            //       Container(width: MediaQuery.of(context).size.width/20, decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(100)), child: IconButton(onPressed: () {}, icon: Icon(Icons.school))),
+            //       SizedBox(height: 20),
+            //       Container(width: MediaQuery.of(context).size.width/20, decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(100)), child: IconButton(onPressed: () {}, icon: Icon(Icons.assessment))),
+
+            //     ],
+            //   ),
+            // ),
           ),
           // Main Content
           Expanded(
