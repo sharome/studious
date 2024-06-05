@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sidebarx/sidebarx.dart';
+import 'package:gauge_indicator/gauge_indicator.dart';
 
 void main() {
   runApp(StudyApp());
@@ -20,145 +20,250 @@ class StudyApp extends StatelessWidget {
 }
 
 class HomePage extends StatelessWidget {
-  final months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  final months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Row(
+      body: Stack(
         children: [
-          CustomSidebar(),
-          // Left Sidebar
+          Container(
+            decoration: BoxDecoration(
+              color: Color.fromRGBO(14, 15, 16, 100),
+            ),
+          ),
+          Row(
+            children: [
+              CustomSidebar(),
+              // Left Sidebar
 
-          // Main Content
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'All Classes Events Today (48)',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        CircleAvatar(
-                          backgroundImage:
-                              NetworkImage('https://via.placeholder.com/150'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Body
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Row(
+              // Main Content
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Left Column
-                            Container(
-                                width: MediaQuery.of(context).size.width / 8,
-                                height: MediaQuery.of(context).size.height / 5,
-                                decoration: BoxDecoration(color: Colors.purple, borderRadius: BorderRadius.circular(10)),
-                                padding: EdgeInsets.all(10),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        SizedBox(width: 10,),
-                                        Text(
-                                          DateTime.now().day.toString(),
-                                          style: GoogleFonts.k2d(fontSize: 70, color: Colors.black),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 8),
-                                    Container(
-                                      height: 50,
-                                      width: 150,
-                                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(100)), child: Center(child: Text(months[DateTime.now().month.toInt()] + ' ' + DateTime.now().year.toString(), style: GoogleFonts.sora(fontSize: 20),))),
-                                    SizedBox(height: 8),
-                                    
-                                  ],
-                                ),
-                              ),
-                            
-                        
-                            SizedBox(width: 16),
-                            // Right Column
-                            Expanded(
-                              flex: 1,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.grey.withOpacity(0.5),
-                                      spreadRadius: 2,
-                                      blurRadius: 5,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                padding: EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Time Average 4h 32min',
-                                      style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    SizedBox(height: 16),
-                                    Container(
-                                      height: 100,
-                                      color: Colors.grey[200],
-                                      child:
-                                          Center(child: Text('Graph Placeholder')),
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text('Weekly Productivity: +13%'),
-                                    SizedBox(height: 8),
-                                    Text('Basics of UX Design: In Progress'),
-                                    SizedBox(height: 8),
-                                    Stack(
-                                      children: [
-                                        Container(
-                                          width: double.infinity,
-                                          height: 10,
-                                          color: Colors.grey[300],
-                                        ),
-                                        Container(
-                                          width: MediaQuery.of(context).size.width *
-                                              0.25,
-                                          height: 10,
-                                          color: Colors.green,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            Text(
+                              'All Classes Events Today (48)',
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white),
+                            ),
+                            CircleAvatar(
+                              backgroundImage: NetworkImage(
+                                  'https://via.placeholder.com/150'),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      // Body
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                // Left Column
+                                Container(
+                                  decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10),
+                                      color: Color.fromARGB(29, 84, 84, 101)),
+                                  width: MediaQuery.of(context).size.width / 8,
+                                  height:
+                                      MediaQuery.of(context).size.height / 5,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            SizedBox(
+                                              width: 10,
+                                            ),
+                                            Text(
+                                              DateTime.now().day.toString(),
+                                              style: GoogleFonts.k2d(
+                                                  fontSize: 70,
+                                                  color: const Color.fromARGB(
+                                                      76, 255, 255, 255)),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 8),
+                                        Container(
+                                            height: 50,
+                                            width: 150,
+                                            decoration: BoxDecoration(
+                                                color: Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(100)),
+                                            child: Row(
+                                              children: [
+                                                SizedBox(
+                                                  width: 15,
+                                                ),
+                                                Text(
+                                                  months[DateTime.now()
+                                                          .month
+                                                          .toInt()] +
+                                                      ' ' +
+                                                      DateTime.now()
+                                                          .year
+                                                          .toString(),
+                                                  style: GoogleFonts.sora(
+                                                      fontSize: 20,
+                                                      color: Colors.white),
+                                                ),
+                                              ],
+                                            )),
+                                        SizedBox(height: 8),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                SizedBox(width: 16),
+                                // Right Column
+                                Container(
+                                  height:
+                                      MediaQuery.of(context).size.height / 5,
+                                  width:
+                                      MediaQuery.of(context).size.width / 1.4,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Color.fromARGB(29, 84, 84, 101),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: EdgeInsets.all(16),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        SizedBox(
+                                          width: 20,
+                                        ),
+                                        Container(
+                                          child: AnimatedRadialGauge(
+                                            duration: Duration(seconds: 1),
+                                            value: 80,
+                                            radius: 150,
+                                            curve: Curves.elasticOut,
+                                            axis: GaugeAxis(
+                                              pointer: GaugePointer.circle(
+                                                  radius: 13,
+                                                  gradient: LinearGradient(
+                                                      colors: [
+                                                        Colors.deepPurple,
+                                                        Colors.purple
+                                                      ],
+                                                      begin: Alignment.topLeft,
+                                                      end: Alignment
+                                                          .bottomRight)),
+                                              min: 0,
+                                              max: 100,
+                                              progressBar:
+                                                  GaugeProgressBar.rounded(
+                                                color: Colors.deepPurple,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 50,
+                                        ),
+                                        Container(
+                                          child: AnimatedRadialGauge(
+                                            duration: Duration(seconds: 1),
+                                            value: 80,
+                                            radius: 150,
+                                            curve: Curves.elasticOut,
+                                            axis: GaugeAxis(
+                                              pointer: GaugePointer.circle(
+                                                  radius: 13,
+                                                  gradient: LinearGradient(
+                                                      colors: [
+                                                        Colors.deepPurple,
+                                                        Colors.purple
+                                                      ],
+                                                      begin: Alignment.topLeft,
+                                                      end: Alignment
+                                                          .bottomRight)),
+                                              min: 0,
+                                              max: 100,
+                                              progressBar:
+                                                  GaugeProgressBar.rounded(
+                                                color: Colors.deepPurple,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 20,
+                                        ),
+                                        Container(
+                                          child: AnimatedRadialGauge(
+                                            duration: Duration(seconds: 1),
+                                            value: 80,
+                                            radius: 150,
+                                            curve: Curves.elasticOut,
+                                            axis: GaugeAxis(
+                                              pointer: GaugePointer.circle(
+                                                  radius: 13,
+                                                  gradient: LinearGradient(
+                                                      colors: [
+                                                        Colors.deepPurple,
+                                                        Colors.purple
+                                                      ],
+                                                      begin: Alignment.topLeft,
+                                                      end: Alignment
+                                                          .bottomRight)),
+                                              min: 0,
+                                              max: 100,
+                                              progressBar:
+                                                  GaugeProgressBar.rounded(
+                                                color: Colors.deepPurple,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -190,23 +295,17 @@ class CustomSidebar extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 20,
-            ),
+            SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 10,
-                  ),
+                  SizedBox(width: 10),
                   Container(
                       height: 50,
                       width: 50,
                       child: Image(image: AssetImage('assets/logo/logo.png'))),
-                  SizedBox(
-                    width: 20,
-                  ),
+                  SizedBox(width: 20),
                   Text(
                     'studious',
                     style: GoogleFonts.sora(color: Colors.white, fontSize: 20),
