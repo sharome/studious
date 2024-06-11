@@ -1,3 +1,5 @@
+import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_state_manager/get_state_manager.dart';
 // import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -7,10 +9,13 @@ import 'package:go_router/go_router.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:get/get.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+
 
 void main() {
   Get.put(ClassesController());
-  Get.put(TaskController());
+  Get.put(IndexController());
   runApp(StudyApp());
 }
 
@@ -31,8 +36,9 @@ class StudyApp extends StatelessWidget {
             builder: (context, state) => ClassesPage(),
           ),
           GoRoute(
-            path: '/study',
-            builder: (context, state) => StudyPage(),
+            path: '/study/:index',
+            builder: (context, state) =>
+                StudyPage(index: state.pathParameters["index"] ?? "0"),
           ),
           GoRoute(
             path: '/statistics',
@@ -41,6 +47,11 @@ class StudyApp extends StatelessWidget {
           GoRoute(
             path: '/add_class',
             builder: (context, state) => AddClassPage(),
+          ),
+          GoRoute(
+            path: '/add_task/:index',
+            builder: (context, state) =>
+                AddTaskPage(index: state.pathParameters["index"] ?? "0"),
           ),
         ],
       ),
@@ -62,14 +73,20 @@ class StudyApp extends StatelessWidget {
 class ClassesController extends GetxController {
   // List<StudyClass> _classes = [];
   var _classes = <StudyClass>[
-    StudyClass(name: "Maths", taskCompletion: 0, color: Colors.deepPurple , tasks: [])
+    StudyClass(
+        name: "Maths", taskCompletion: 0, color: Colors.deepPurple, tasks: [])
   ].obs;
+}
+
+class IndexController extends GetxController {
+  var _index = 0;
 }
 
 class ClassesPage extends StatefulWidget {
   @override
   _ClassesPageState createState() => _ClassesPageState();
 }
+
 
 class _ClassesPageState extends State<ClassesPage> {
   final months = [
@@ -89,10 +106,45 @@ class _ClassesPageState extends State<ClassesPage> {
 
   final _classescontroller = Get.find<ClassesController>();
 
+
+  List totalTasks = [];
+  List completedTasks = [];
+  List hourlyTasks = [];
+  double maxValue = 1;
+  double value = 0;
   bool _isAddingClass = false;
   TextEditingController _classNameController = TextEditingController();
   Color _selectedColor = Colors.blue;
 
+  Timer? _timer;
+  Timer? _hourlyTimer;
+
+  int _currentSeconds = DateTime.now().second;
+  String _currentTime = 'Finding Timezone...';
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    
+    _startTimer();
+    
+    
+
+    for (var item in Get.find<ClassesController>()._classes) {
+     value = value + item.taskCompletion;
+    }
+    // if (totalTasks.length == 0) {
+    //   maxValue = maxValue;
+    //   value = 0;
+    // } else {
+    //   maxValue = totalTasks.length.toDouble() - 1;
+    //   value = completedTasks.length / totalTasks.length;
+    // }
+
+    maxValue = Get.find<ClassesController>()._classes.length * 100;
+    
+  }
   void _addNewClass() {
     setState(() {
       _classescontroller._classes.add(StudyClass(
@@ -107,6 +159,28 @@ class _ClassesPageState extends State<ClassesPage> {
   }
 
   @override
+  void dispose() {
+    _timer?.cancel();
+    _hourlyTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      setState(() {
+        _currentSeconds = DateTime.now().second;
+        _currentTime = '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}';
+        if (DateTime.now().minute == 0) {
+          hourlyTasks.clear();
+        }
+      });
+    });
+
+    // _hourlyTimer = Timer.periodic(Duration(hours: 1))
+  }
+
+  @override
+
   Widget build(BuildContext context) {
     return Stack(
       children: [
@@ -118,7 +192,7 @@ class _ClassesPageState extends State<ClassesPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'All Classes Events Today (48)',
+                    'Time to Study!',
                     style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -202,55 +276,70 @@ class _ClassesPageState extends State<ClassesPage> {
                           width: 60,
                         ),
                         Container(
-                          child: AnimatedRadialGauge(
-                            duration: Duration(seconds: 1),
-                            value: 80,
-                            radius: 150,
-                            curve: Curves.elasticOut,
-                            axis: GaugeAxis(
-                              pointer: GaugePointer.circle(
-                                  radius: 13,
-                                  gradient: LinearGradient(
-                                      colors: [
-                                        Colors.deepPurple,
-                                        Colors.purple
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight)),
-                              min: 0,
-                              max: 100,
-                              progressBar: GaugeProgressBar.rounded(
-                                color: Colors.deepPurple,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                            Text('Total Tasks: ${value/maxValue * 100.round()}', style: GoogleFonts.mPlusRounded1c(color: Colors.white, fontSize: 15),),
+                              AnimatedRadialGauge(
+                                duration: Duration(seconds: 1),
+                                value: value,
+                                radius: 150,
+                                
+                                curve: Curves.elasticOut,
+                                axis: GaugeAxis(
+                                  degrees: 270,
+                                  pointer: GaugePointer.circle(
+                                      radius: 13,
+                                      gradient: LinearGradient(
+                                          colors: [
+                                            Colors.deepPurple,
+                                            Colors.purple
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight)),
+                                  min: 0,
+                                  max: maxValue,
+                                  progressBar: GaugeProgressBar.rounded(
+                                    color: Colors.deepPurple,
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                         SizedBox(
                           width: 150,
                         ),
-                        Container(
-                          child: AnimatedRadialGauge(
-                            duration: Duration(seconds: 1),
-                            value: 80,
-                            radius: 150,
-                            curve: Curves.elasticOut,
-                            axis: GaugeAxis(
-                              pointer: GaugePointer.circle(
-                                  radius: 13,
-                                  gradient: LinearGradient(
-                                      colors: [
-                                        Colors.deepPurple,
-                                        Colors.purple
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight)),
-                              min: 0,
-                              max: 100,
-                              progressBar: GaugeProgressBar.rounded(
-                                color: Colors.deepPurple,
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Text(_currentTime, style: GoogleFonts.sora(color: Colors.white, fontSize: _currentTime == 'Finding Timezone...' ? 11 : 20),),
+                            Container(
+                              child: AnimatedRadialGauge(
+                                duration: Duration(seconds: 1),
+                                value: _currentSeconds.toDouble(),
+                                radius: 150,
+                                curve: Curves.ease,
+                                axis: GaugeAxis(
+                                  degrees: 360,
+                                  pointer: GaugePointer.circle(
+                                      radius: 13,
+                                      gradient: LinearGradient(
+                                          colors: [
+                                            Colors.deepPurple,
+                                            Colors.purple
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight)),
+                                  min: 0,
+                                  max: 60,
+                                  progressBar: GaugeProgressBar.rounded(
+                                    color: Colors.deepPurple,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                         SizedBox(
                           width: 150,
@@ -322,12 +411,6 @@ class _ClassesPageState extends State<ClassesPage> {
   }
 }
 
-class TaskController extends GetxController {
-
-  bool isTaskCreating = false;
-
-}
-
 class MainShell extends StatefulWidget {
   final Widget child;
 
@@ -338,9 +421,7 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-
-
-  final _taskController = Get.find<TaskController>();
+  final _index = Get.find<IndexController>()._index;
 
   @override
   Widget build(BuildContext context) {
@@ -353,10 +434,29 @@ class _MainShellState extends State<MainShell> {
           //     classGridViewState._isAddingClass = true;
           //   });
           // }
-          if (GoRouter.of(context).routeInformationProvider.value.uri.toString() == '/study') {
-            _taskController.isTaskCreating = true;
-          }
-          else {
+
+          if (GoRouter.of(context)
+              .routeInformationProvider
+              .value
+              .uri
+              .toString()
+              .startsWith('/study/')) {
+            context.go('/add_task/$_index');
+          } else if (GoRouter.of(context)
+              .routeInformationProvider
+              .value
+              .uri
+              .toString()
+              .startsWith('/add_task')) {
+            null;
+          } else if (GoRouter.of(context)
+              .routeInformationProvider
+              .value
+              .uri
+              .toString()
+              .startsWith('/add_class')) {
+            null;
+          } else {
             context.go('/add_class');
             print(GoRouter.of(context).routeInformationProvider.value.uri);
           }
@@ -501,7 +601,7 @@ class SidebarItem extends StatelessWidget {
 // Model for Class
 class StudyClass {
   final String name;
-  final double taskCompletion;
+  double taskCompletion;
   final Color color;
   final List<ClassTask> tasks;
 
@@ -511,16 +611,44 @@ class StudyClass {
     required this.color,
     required this.tasks,
   });
+
+  StudyClass.fromMap(Map map) 
+    : this.name = map["name"],
+      this.taskCompletion = map["taskCompletion"],
+      this.color = map["color"],
+      this.tasks = map["tasks"];
+  
+
+  Map toMap() {
+    return {
+      "name": this.name,
+      "taskCompletion": this.taskCompletion,
+      "color": this.color,
+      "tasks": this.tasks,
+    };
+  }
 }
 
 class ClassTask {
   final String name;
-  final bool isCompleted;
+  bool isCompleted;
 
   ClassTask({
     required this.name,
     required this.isCompleted,
   });
+
+  ClassTask.fromMap(Map map) 
+    : this.name = map["name"],
+      this.isCompleted = map["isCompleted"];
+  
+
+  Map toMap() {
+    return {
+      "name": this.name,
+      "isCompleted": this.isCompleted,
+    };
+  }
 }
 
 class ClassGridView extends StatefulWidget {
@@ -551,6 +679,9 @@ class _ClassGridViewState extends State<ClassGridView> {
         _loadMoreClasses();
       }
     });
+
+    //initialise
+    
   }
 
   @override
@@ -596,11 +727,19 @@ class _ClassGridViewState extends State<ClassGridView> {
         _isAddingClass = false;
         _newClassName = '';
         _newClassColor = Colors.blue;
+        Future<void> saveData(String key, String value) async {
+          final prefs = await SharedPreferences.getInstance();
+          List<String> usrList = _classesController._classes.map((item) => jsonEncode(item.toMap())).toList();
+
+          // await prefs.setStringList("classes", _classesController._classes.toList());
+}
       });
     }
   }
 
   @override
+  final _indexController = Get.find<IndexController>();
+
   Widget build(BuildContext context) {
     return Obx(() {
       return Stack(
@@ -672,26 +811,41 @@ class _ClassGridViewState extends State<ClassGridView> {
                                         SizedBox(height: 8),
                                         GestureDetector(
                                           onTap: () {
-                                            _hoveredIndex == index ? context.go('/study') : null; 
-
+                                            _indexController._index = index;
+                                            context.go('/study/$index');
                                           },
                                           child: AnimatedContainer(
-                                            duration: Duration(milliseconds: 400),
+                                            duration:
+                                                Duration(milliseconds: 400),
                                             curve: Curves.easeInOutCirc,
-                                            width:  _hoveredIndex == index ? MediaQuery.of(context).size.width/4 : 200,
-                                            padding: _hoveredIndex == index ? EdgeInsets.all(10) : EdgeInsets.all(0),
-                                            alignment: _hoveredIndex == index ?  Alignment.center : Alignment.topLeft,
+                                            width: _hoveredIndex == index
+                                                ? MediaQuery.of(context)
+                                                        .size
+                                                        .width /
+                                                    4
+                                                : 200,
+                                            padding: _hoveredIndex == index
+                                                ? EdgeInsets.all(10)
+                                                : EdgeInsets.all(0),
+                                            alignment: _hoveredIndex == index
+                                                ? Alignment.center
+                                                : Alignment.topLeft,
                                             decoration: BoxDecoration(
-                                              color:  _hoveredIndex == index ? Colors.black : Colors.transparent,
-                                              borderRadius: BorderRadius.circular(20)
-                                            ),
+                                                color: _hoveredIndex == index
+                                                    ? Colors.black
+                                                    : Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(20)),
                                             child: Text(
-                                              _hoveredIndex == index ? 'Start Study' :
-                                              'Task Completion: ${studyClass.taskCompletion}%',
+                                              _hoveredIndex == index
+                                                  ? 'Start Study'
+                                                  : 'Task Completion: ${studyClass.taskCompletion}%',
                                               style: GoogleFonts.sora(
-                                                fontSize:  _hoveredIndex == index ? 24 : 16,
-                                                color: Colors.white
-                                              ),
+                                                  fontSize:
+                                                      _hoveredIndex == index
+                                                          ? 24
+                                                          : 16,
+                                                  color: Colors.white),
                                               // style: TextStyle(
                                               //   fontSize:  _hoveredIndex == index ? 24 : 16,
                                               //   color: Colors.white,
@@ -778,175 +932,445 @@ class _ClassGridViewState extends State<ClassGridView> {
   }
 }
 
+class TimerManager {
+  late Timer _timer;
+  late int _remainingSeconds;
+  late bool _isRunning = false;
+  String timerStatus = 'stopped';
+  // bool timerRunFirstTime;
+  // late int timerFTStart = 200;
+
+  TimerManager(int hours, int minutes, int seconds) {
+    _remainingSeconds = hours * 3600 + minutes * 60 + seconds;
+  }
+
+  void startTimer(Function(int, int, int) callback) {
+    if (!_isRunning) {
+      _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+        if (_remainingSeconds > 0) {
+          _remainingSeconds--;
+          final hours = _remainingSeconds ~/ 3600;
+          final minutes = (_remainingSeconds ~/ 60) % 60;
+          final seconds = _remainingSeconds % 60;
+          callback(hours, minutes, seconds);
+        } else {
+          _timer.cancel();
+        }
+      });
+      _isRunning = true;
+      timerStatus = 'running';
+    }
+  }
+
+  void pauseTimer() {
+    timerStatus = 'paused';
+    _timer.cancel();
+    _isRunning = false;
+  }
+
+  void resumeTimer(Function(int, int, int) callback) {
+    timerStatus = 'running';
+    startTimer(callback);
+  }
+
+  bool isRunning() {
+    return _isRunning;
+  }
+
+  int getStartingTime (hours, minutes, seconds) {
+    // if (timerRunFirstTime == false) {
+    //   timerRunFirstTime == true;
+      // print(hours * 3600 + minutes * 60 + seconds);
+      
+      return hours * 3600 + minutes * 60 + seconds;
+    // } else {
+    //   return timerFTStart;
+    // }
+    
+  }
+
+  void dispose() {
+    _timer.cancel(); // Cancel the timer when disposing
+    _isRunning = false;
+  }
+}
+
+
+
 class StudyPage extends StatefulWidget {
+  final String index;
+
+  StudyPage({
+    required this.index,
+  });
+
   @override
   State<StudyPage> createState() => _StudyPageState();
 }
 
 class _StudyPageState extends State<StudyPage> {
+
+int _startingHours = 0;
+int _startingMinutes = 45;
+int _startingSeconds = 0;
   // Variables
-  int secondsLeft = 5;
-  int minutesLeft = 10;
-  int hoursLeft = 0;
+int _hours = 0;
+int _minutes = 0;
+int _seconds = 0;
+String timerStatus = 'stopped';
+bool _isInitialized = false;
+
+
 
   bool timerStarted = false;
 
-  late int startingTime;
+  double startingTime = 2700;
 
   final _classesController = Get.find<ClassesController>();
 
   Timer? _timer;
 
+  late TimerManager _timerManager;
+  
+  
+
   @override
   void initState() {
     super.initState();
-    startingTime = hoursLeft * 60 * 60 + minutesLeft * 60 + secondsLeft;
+    // int secondsLeft = 0;
+    // int minutesLeft = 45;
+    // int hoursLeft = 1;
+    _timerManager = TimerManager(0, _startingMinutes, 0);
+    _timerManager.startTimer((hours, minutes, seconds) {
+      setState(() {
+        _hours = hours;
+        _minutes = minutes;
+        _seconds = seconds;
+        
+      });
+    // startingTime = _timerManager.getStartingTime(_startingHours, _startingMinutes, _startingSeconds).toDouble();
+    print("initstate called");
+  
+  
+    
+  });
+
+  // @override
+  // void didChangeDependencies() {
+  //   super.didChangeDependencies();
+  //   if (!_isInitialized) {
+  //     // Run your one-time initialization code here
+  //     // This code will only run the first time the widget is built
+      
+  //     _isInitialized = true; // Update the flag
+  //     print("didchangedependencies called");
+  //   }
+  // }
+    
   }
 
-  void _startCountdown() {
-    if (_timer != null && _timer!.isActive) return; // Prevent multiple timers from running
+  // void _startCountdown() {
+  //   if (_timer != null && _timer!.isActive)
+  //     return; // Prevent multiple timers from running
 
-    setState(() {
-      timerStarted = true;
-    });
+  //   setState(() {
+  //     timerStarted = true;
+  //   });
 
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+  //   _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      
+  //     setState(() {
+  //       if (secondsLeft > 0) {
+  //         secondsLeft--;
+  //       } else {
+  //         if (minutesLeft > 0) {
+  //           minutesLeft--;
+  //           secondsLeft = 59;
+  //         } else {
+  //           if (hoursLeft > 0) {
+  //             hoursLeft--;
+  //             minutesLeft = 59;
+  //             secondsLeft = 59;
+  //           } else {
+  //             timer.cancel();
+  //           }
+  //         }
+  //       }
+  //     });
+  //   });
+  // }
+  void _toggleTimer() {
+  if (_timerManager.isRunning()) {
+    _timerManager.pauseTimer();
+  } else {
+    _timerManager.resumeTimer((hours, minutes, seconds) {
       setState(() {
-        if (secondsLeft > 0) {
-          secondsLeft--;
-        } else {
-          if (minutesLeft > 0) {
-            minutesLeft--;
-            secondsLeft = 59;
-          } else {
-            if (hoursLeft > 0) {
-              hoursLeft--;
-              minutesLeft = 59;
-              secondsLeft = 59;
-            } else {
-              timer.cancel();
-            }
-          }
-        }
+        _hours = hours;
+        _minutes = minutes;
+        _seconds = seconds;
       });
     });
   }
 
+}
+
   @override
+  final _indexController = Get.find<IndexController>();
+  String timerMessage = 'Tap for info';
+  // String timerInfo = 'Create all your tasks before starting timer';
+  
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Center(
-          child: Container(
-            height: 100,
-            width: 100,
-            color: Colors.white,
-          ),
-        ),
-        Container(
-          padding: EdgeInsets.only(top: 100, left: 40),
-          child: Column(
+    return Container(
+      padding: EdgeInsets.only(top: 100, left: 40),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                   _classesController._classes.last.name,
-                    style: GoogleFonts.mPlusRounded1c(
-                      color: Colors.white,
-                      fontSize: 100,
-                      fontWeight: FontWeight.bold,
+              Container(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 600,
+                      // color: Colors.deepPurple,
+                      child: AutoSizeText(
+                        _classesController
+                            ._classes[_indexController._index].name,
+                            overflow: TextOverflow.ellipsis,
+                            minFontSize: 50,
+                            maxFontSize: 100,
+                            maxLines: 1,
+                        style: GoogleFonts.mPlusRounded1c(
+                          color: Colors.white,
+                          fontSize: 100,
+                          fontWeight: FontWeight.bold,
+                        
+                        ),
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width / 1.9,
-                  ),
-                  Container(
-                    width: 200,
-                    height: 400,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '$hoursLeft : $minutesLeft : $secondsLeft',
+                    // SizedBox(
+                    //   width: MediaQuery.of(context).size.width / 4,
+                    // ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
+              Container(
+                // alignment: Alignment.topCenter,
+                width: MediaQuery.of(context).size.width / 3,
+                height: MediaQuery.of(context).size.height / 4,
+                child: _classesController
+                        ._classes[_indexController._index].tasks.isEmpty
+                    ? Text(
+                        'Click + to create task',
+                        style:
+                            GoogleFonts.sora(color: Colors.white, fontSize: 24),
+                      )
+                    : ListView.builder(
+                        itemCount: _classesController
+                            ._classes[_indexController._index]
+                            .tasks
+                            .length, // Number of items in the list
+                        itemBuilder: (context, index) {
+                          return CheckboxListTile(
+                            title: Text(
+                              _classesController
+                                  ._classes[_indexController._index]
+                                  .tasks[index]
+                                  .name,
+                              style: GoogleFonts.mPlusRounded1c(
+                                color: Colors.white,
+                                fontSize: 20,
+                              ),
+                            ),
+                            value: _classesController
+                                ._classes[_indexController._index]
+                                .tasks[index]
+                                .isCompleted,
+                            onChanged: (bool? value) {
+                              List<ClassTask> completedTasks = [];
+
+                              value != value;
+                              // print(value.toString());
+                              setState(() {
+                                _classesController
+                                    ._classes[_indexController._index]
+                                    .tasks[index]
+                                    .isCompleted = value ?? false;
+                              });
+                              for (int task = 0;
+                                  task <
+                                      _classesController
+                                          ._classes[_indexController._index]
+                                          .tasks
+                                          .length;
+                                  task++) {
+                                if (_classesController
+                                        ._classes[_indexController._index]
+                                        .tasks[task]
+                                        .isCompleted ==
+                                    true) {
+                                  completedTasks.add(_classesController
+                                      ._classes[_indexController._index]
+                                      .tasks[task]);
+                                }
+                              }
+                              _classesController
+                                      ._classes[_indexController._index]
+                                      .taskCompletion =
+                                  completedTasks.length /
+                                      _classesController
+                                          ._classes[_indexController._index]
+                                          .tasks
+                                          .length * 100;
+                              print(completedTasks.length);
+                              print(_classesController
+                                  ._classes[_indexController._index]
+                                  .tasks
+                                  .length);
+                              print(_classesController
+                                  ._classes[_indexController._index]
+                                  .taskCompletion);
+                            },
+                            checkColor: Colors.white,
+                            activeColor: Colors.blue,
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+          Container(
+            alignment: Alignment.center,
+            width: 500,
+            height: 800,
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 50,
+                ),
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        print("tapped");
+                        setState(() {
+                          if (_classesController._classes[_indexController._index].tasks.isEmpty == true) {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text("Add Task to Access Timer"),
+                                );
+                              },
+                              // title: Text("Add Task to Access Timer"),
+                            );
+                        } else {
+                          _toggleTimer();
+                          timerMessage = '$_hours : $_minutes : $_seconds';
+                        }
+                        });
+                      },
+                      child: AnimatedContainer(
+                        alignment: Alignment.center,
+                      duration: Duration(milliseconds: 200),
+                      height: 160,
+                      width: 160,
+                      decoration: BoxDecoration(
+                        color: _timerManager.isRunning() ? Colors.green : Colors.red,
+                        borderRadius: BorderRadius.circular(100)
+                      ),
+                        child: Text(
+                         '$_hours : $_minutes : $_seconds',
                           style: GoogleFonts.mPlusRounded1c(
                             color: Colors.white,
                             fontSize: 20,
                           ),
                         ),
-                        IconButton(
-                          onPressed: _startCountdown,
-                          icon: Icon(Icons.timer),
-                        ),
-                        AnimatedRadialGauge(
-                          duration: Duration(seconds: 1),
-                          value: hoursLeft * 60 * 60 + minutesLeft * 60 + secondsLeft.toDouble(),
-                          radius: 100,
-                          axis: GaugeAxis(
-                            progressBar: GaugeProgressBar.rounded(color: Colors.black),
-                            min: 0,
-                            max: startingTime.toDouble(),
-                            degrees: 360,
-                            // pointer: GaugePointer.circle(radius: 10)
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-              Container(
-                width: MediaQuery.of(context).size.width/4,
-                height: MediaQuery.of(context).size.height/3,
-                child:
-                _classesController._classes.last.tasks.isEmpty
-                
-                ? 
-                Text('Click + to create task', style: GoogleFonts.sora(color: Colors.white, fontSize: 24),)
-                
-                :
-        
-                ListView.builder(
-                  itemCount: 20, // Number of items in the list
-                  itemBuilder: (context, index) {
-                    return CheckboxListTile(
-                      title: Text(
-                        'Task ${index + 1}',
-                        style: GoogleFonts.mPlusRounded1c(
-                          color: Colors.white,
-                          fontSize: 20,
-                        ),
                       ),
-                      value: false,
-                      onChanged: (bool? value) {
-                        // Handle checkbox state change
-                      },
-                      checkColor: Colors.white,
-                      activeColor: Colors.blue,
-                    );
-                  },
+                    ),
+                    // IconButton(
+                    //   onPressed: _startCountdown,
+                    //   icon: Icon(Icons.timer),
+                    // ),
+                    AnimatedRadialGauge(
+                      duration: Duration(seconds: 1),
+                      value: _hours * 60 * 60 +
+                          _minutes * 60 +
+                          _seconds.toDouble(),
+                      radius: 120,
+                      axis: GaugeAxis(
+                        progressBar:
+                            GaugeProgressBar.rounded(gradient: GaugeAxisGradient(colors: [
+                              Color(0xFF9600FF),
+                              Color(0xFFAEBAf8),
+                            ],),),
+                        min: 0,
+                        max: startingTime,
+                        degrees: 360,
+                        // pointer: GaugePointer.circle(radius: 10)
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                SizedBox(
+                  height: 200,
+                ),
+                Container(
+                  alignment: Alignment.center,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Text(_classesController
+                            ._classes[_indexController._index].taskCompletion.round().toString(), style: GoogleFonts.mPlusRounded1c(color: Colors.white, fontSize: 30),),
+                      
+                      AnimatedRadialGauge(
+                        curve: Curves.easeInOutCirc,
+                        duration: Duration(seconds: 1),
+                        value: _classesController
+                            ._classes[_indexController._index].taskCompletion,
+                        radius: 120,
+                        axis: GaugeAxis(
+                          pointer: GaugePointer.needle(width: 0, height: 0, color: Colors.white),
+                          progressBar: const GaugeProgressBar.rounded(gradient: GaugeAxisGradient(colors: [
+                              Color(0xFFF6EA41),
+                              Color(0xFFF048C6),
+                            ])),
+                          min: 0,
+                          max: 100,
+                          degrees: 360,
+                          // pointer: GaugePointer.circle(radius: 10)
+                        
+                        ),
+                        
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
+
   @override
-  void dispose() {
-    _timer?.cancel(); // Cancel the timer when the widget is disposed
-    super.dispose();
-  }
+void dispose() {
+  _timerManager.dispose(); // Cancel the timer
+  super.dispose();
 }
 
+}
 
 class StatisticsPage extends StatelessWidget {
   @override
@@ -1008,7 +1432,7 @@ class _AddClassPageState extends State<AddClassPage> {
                         borderSide: BorderSide(color: Colors.white)),
                     focusedBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey.shade400)),
-                  ),
+                  ), 
                 ),
               ),
               SizedBox(
@@ -1069,6 +1493,81 @@ class _AddClassPageState extends State<AddClassPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class AddTaskPage extends StatefulWidget {
+  final String index;
+
+  const AddTaskPage({super.key, required this.index});
+
+  @override
+  State<AddTaskPage> createState() => _AddTaskPageState();
+}
+
+class _AddTaskPageState extends State<AddTaskPage> {
+  final _classesController = Get.find<ClassesController>();
+  final _indexController = Get.find<IndexController>();
+
+  String textFieldEntry = 'No Task Name';
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 100),
+            child: TextField(
+              onSubmitted: (text) {
+                _classesController._classes[_indexController._index].tasks
+                    .add(ClassTask(name: text, isCompleted: false));
+                context.go('/study/' + _indexController._index.toString());
+                // print(_indexController._index);
+                // print(_classesController._classes[int.parse(widget.index)].name);
+                // print(_classesController._classes[int.parse(widget.index)].tasks.last.name);
+                List<ClassTask> completedTasks =  [];
+                for (int task = 0;
+                                  task <
+                                      _classesController
+                                          ._classes[_indexController._index]
+                                          .tasks
+                                          .length;
+                                  task++) {
+                                if (_classesController
+                                        ._classes[_indexController._index]
+                                        .tasks[task]
+                                        .isCompleted ==
+                                    true) {
+                                  completedTasks.add(_classesController
+                                      ._classes[_indexController._index]
+                                      .tasks[task]);
+                                }
+                              }
+                              _classesController
+                                      ._classes[_indexController._index]
+                                      .taskCompletion =
+                                  completedTasks.length /
+                                      _classesController
+                                          ._classes[_indexController._index]
+                                          .tasks
+                                          .length * 100;
+              },
+              style: GoogleFonts.sora(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Task Name',
+                hintStyle: GoogleFonts.sora(color: Colors.grey),
+                enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white)),
+                focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade400)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
