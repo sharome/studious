@@ -2,7 +2,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_state_manager/get_state_manager.dart';
-// import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gauge_indicator/gauge_indicator.dart';
 import 'package:go_router/go_router.dart';
@@ -12,17 +12,19 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-
+// Initialise App and Set-up universal variables
 void main() {
   Get.put(ClassesController());
   Get.put(IndexController());
   runApp(StudyApp());
 }
 
+// Navigation Set Up
 class StudyApp extends StatelessWidget {
   final GlobalKey<_ClassGridViewState> classGridViewKey =
       GlobalKey<_ClassGridViewState>();
 
+  // Intialising named routes for app navigation
   final GoRouter _router = GoRouter(
     initialLocation: '/',
     routes: [
@@ -40,10 +42,10 @@ class StudyApp extends StatelessWidget {
             builder: (context, state) =>
                 StudyPage(index: state.pathParameters["index"] ?? "0"),
           ),
-          GoRoute(
-            path: '/statistics',
-            builder: (context, state) => StatisticsPage(),
-          ),
+          // GoRoute(
+          //   path: '/statistics',
+          //   builder: (context, state) => StatisticsPage(),
+          // ),
           GoRoute(
             path: '/add_class',
             builder: (context, state) => AddClassPage(),
@@ -58,6 +60,7 @@ class StudyApp extends StatelessWidget {
     ],
   );
 
+  // building home screen
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
@@ -70,25 +73,36 @@ class StudyApp extends StatelessWidget {
   }
 }
 
+// universal variable to access class information on all widgets
 class ClassesController extends GetxController {
-  // List<StudyClass> _classes = [];
   var _classes = <StudyClass>[
     StudyClass(
-        name: "Maths", taskCompletion: 0, color: Colors.deepPurple, tasks: [])
+        name: "Maths", taskCompletion: 0, color: Colors.deepPurple, tasks: []),
+            StudyClass(
+        name: "English", taskCompletion: 0, color: Colors.blue, tasks: []),
+            StudyClass(
+        name: "Science", taskCompletion: 0, color: Colors.green, tasks: []),
+            StudyClass(
+        name: "Programming", taskCompletion: 0, color: Colors.deepOrange, tasks: []),
+            StudyClass(
+        name: "BM 12", taskCompletion: 0, color: Colors.teal, tasks: []),
+
   ].obs;
 }
 
+// universal variable to access index of selected class
 class IndexController extends GetxController {
   var _index = 0;
 }
 
+//home page or class view page
 class ClassesPage extends StatefulWidget {
   @override
   _ClassesPageState createState() => _ClassesPageState();
 }
 
-
 class _ClassesPageState extends State<ClassesPage> {
+  // translate month index to month text
   final months = [
     "Jan",
     "Feb",
@@ -104,49 +118,53 @@ class _ClassesPageState extends State<ClassesPage> {
     "Dec"
   ];
 
+  //impoort the _classesController to get the _classes list
   final _classescontroller = Get.find<ClassesController>();
 
-
+  //variables for tracking tasks
   List totalTasks = [];
   List completedTasks = [];
   List hourlyTasks = [];
+  int currentTaskLength = 0;
   double maxValue = 1;
   double value = 0;
   bool _isAddingClass = false;
   TextEditingController _classNameController = TextEditingController();
   Color _selectedColor = Colors.blue;
 
+  //timer for gauges
   Timer? _timer;
   Timer? _hourlyTimer;
 
   int _currentSeconds = DateTime.now().second;
   String _currentTime = 'Finding Timezone...';
 
+  int? closestDueDate;
+  DateTime closestDueDateTime = DateTime(DateTime.now().year + 1);
+
+  //initialise the state for the page
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    
+    //start timer for gauge
     _startTimer();
-    
-    
 
+    //for every item in the _classes list
     for (var item in Get.find<ClassesController>()._classes) {
-     value = value + item.taskCompletion;
+      //add "taskCompletion" to "value"
+      value = value + item.taskCompletion;
     }
-    // if (totalTasks.length == 0) {
-    //   maxValue = maxValue;
-    //   value = 0;
-    // } else {
-    //   maxValue = totalTasks.length.toDouble() - 1;
-    //   value = completedTasks.length / totalTasks.length;
-    // }
 
+    // set the maximum value to the length of classes times 100
     maxValue = Get.find<ClassesController>()._classes.length * 100;
-    
   }
+
+  // function for adding a new class
   void _addNewClass() {
+    //setState so UI updates
     setState(() {
+      //add the StudyClass class to the _classes list
       _classescontroller._classes.add(StudyClass(
         name: _classNameController.text,
         taskCompletion: 0,
@@ -158,6 +176,7 @@ class _ClassesPageState extends State<ClassesPage> {
     });
   }
 
+  // dispose timers
   @override
   void dispose() {
     _timer?.cancel();
@@ -165,23 +184,64 @@ class _ClassesPageState extends State<ClassesPage> {
     super.dispose();
   }
 
+  // function to start the timer
   void _startTimer() {
+    List timerCompletedTasks = [];
+    // happen every second
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       setState(() {
+        //set the second hand of the gauge to the currebt second
         _currentSeconds = DateTime.now().second;
-        _currentTime = '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}';
-        if (DateTime.now().minute == 0) {
-          hourlyTasks.clear();
+        //set the time of the time display to the current time
+        _currentTime =
+            '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}';
+
+        List dueDates = [];
+        List dueDateTime = [];
+        int daysBetween(DateTime from, DateTime to) {
+          from = DateTime(from.year, from.month, from.day);
+          to = DateTime(to.year, to.month, to.day);
+          return (to.difference(from).inHours / 24).round();
         }
+
+        for (var item in _classescontroller._classes) {
+          if (item.tasks.isNotEmpty) {
+            for (var task in item.tasks) {
+              dueDates.add(daysBetween(DateTime.now(), task.dueDate));
+              dueDateTime.add(task.dueDate);
+            }
+          } else {
+            closestDueDateTime = DateTime(DateTime.now().year + 1);
+          }
+        }
+
+        dueDates.sort();
+        dueDateTime.sort((a, b) {
+          DateTime now = DateTime.now();
+          Duration diffA = a.difference(now);
+          Duration diffB = b.difference(now);
+          return diffA.inMilliseconds.compareTo(diffB.inMilliseconds);
+        });
+        
+        if (dueDateTime.isNotEmpty) {
+          closestDueDateTime = dueDateTime.first;
+        }
+        
+        if (dueDates.isNotEmpty) {
+          closestDueDate = dueDates.first;
+        }
+        
       });
     });
-
-    // _hourlyTimer = Timer.periodic(Duration(hours: 1))
   }
 
   @override
-
+  // build method
   Widget build(BuildContext context) {
+    final DateTime now = DateTime.now();
+    final DateTime oneMonthAgo = DateTime(now.year, now.month - 1, now.day);
+
+    // home page creation
     return Stack(
       children: [
         Column(
@@ -205,6 +265,7 @@ class _ClassesPageState extends State<ClassesPage> {
                 ],
               ),
             ),
+            // date display
             Row(
               children: [
                 Container(
@@ -260,6 +321,7 @@ class _ClassesPageState extends State<ClassesPage> {
                   ),
                 ),
                 SizedBox(width: 16),
+                // Task Completion Gauge
                 Container(
                   height: MediaQuery.of(context).size.height / 5,
                   width: MediaQuery.of(context).size.width / 1.4,
@@ -279,28 +341,35 @@ class _ClassesPageState extends State<ClassesPage> {
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                            Text('Total Tasks: ${value/maxValue * 100.round()}', style: GoogleFonts.mPlusRounded1c(color: Colors.white, fontSize: 15),),
+                              Text(
+                                'Total Tasks: ${(value / maxValue * 100).round()}',
+                                style: GoogleFonts.mPlusRounded1c(
+                                    color: Colors.white, fontSize: 15),
+                              ),
                               AnimatedRadialGauge(
                                 duration: Duration(seconds: 1),
                                 value: value,
                                 radius: 150,
-                                
-                                curve: Curves.elasticOut,
+                                curve: Curves.easeInOutCirc,
                                 axis: GaugeAxis(
                                   degrees: 270,
                                   pointer: GaugePointer.circle(
                                       radius: 13,
                                       gradient: LinearGradient(
-                                          colors: [
-                                            Colors.deepPurple,
-                                            Colors.purple
-                                          ],
+                                          colors: value == maxValue
+                                              ? [Colors.green, Colors.blue]
+                                              : [
+                                                  Colors.deepPurple,
+                                                  Colors.purple
+                                                ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight)),
                                   min: 0,
                                   max: maxValue,
                                   progressBar: GaugeProgressBar.rounded(
-                                    color: Colors.deepPurple,
+                                    color: value == maxValue
+                                        ? Colors.green
+                                        : Colors.deepPurple,
                                   ),
                                 ),
                               ),
@@ -310,10 +379,19 @@ class _ClassesPageState extends State<ClassesPage> {
                         SizedBox(
                           width: 150,
                         ),
+                        // Time Gauge
                         Stack(
                           alignment: Alignment.center,
                           children: [
-                            Text(_currentTime, style: GoogleFonts.sora(color: Colors.white, fontSize: _currentTime == 'Finding Timezone...' ? 11 : 20),),
+                            Text(
+                              _currentTime,
+                              style: GoogleFonts.sora(
+                                  color: Colors.white,
+                                  fontSize:
+                                      _currentTime == 'Finding Timezone...'
+                                          ? 11
+                                          : 20),
+                            ),
                             Container(
                               child: AnimatedRadialGauge(
                                 duration: Duration(seconds: 1),
@@ -344,28 +422,84 @@ class _ClassesPageState extends State<ClassesPage> {
                         SizedBox(
                           width: 150,
                         ),
+                        // Gauge 3
                         Container(
-                          child: AnimatedRadialGauge(
-                            duration: Duration(seconds: 1),
-                            value: 80,
-                            radius: 150,
-                            curve: Curves.elasticOut,
-                            axis: GaugeAxis(
-                              pointer: GaugePointer.circle(
-                                  radius: 13,
-                                  gradient: LinearGradient(
-                                      colors: [
-                                        Colors.deepPurple,
-                                        Colors.purple
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight)),
-                              min: 0,
-                              max: 100,
-                              progressBar: GaugeProgressBar.rounded(
-                                color: Colors.deepPurple,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Text(
+                                //null check
+                                closestDueDate != null
+                                    ? '${closestDueDate! < 3 ? 'Hurry' : ''} A task is due in ${closestDueDate} days!'
+                                    : "No Tasks Created",
+                                style: GoogleFonts.mPlusRounded1c(
+                                  //null check
+                                    color: Colors.white, fontSize: closestDueDate != null ? 10 : 15),
                               ),
-                            ),
+                              AnimatedRadialGauge(
+                                duration: Duration(seconds: 1),
+                                value: DateTime.now().millisecondsSinceEpoch.toDouble(),
+                                radius: 150,
+                                curve: Curves.elasticOut,
+                                axis: GaugeAxis(
+                                  degrees: 270,
+                                  pointer: GaugePointer.circle(
+                                      radius: 13,
+                                      gradient: LinearGradient(
+                                          colors: 
+                                          //null check
+                                          closestDueDate != null ? 
+                                          closestDueDate! < 3 ? 
+                                          [
+                                            Colors.red,
+                                            Colors.pink
+                                          ]
+                                          :
+
+                                          [
+                                            Colors.deepPurple,
+                                            Colors.purple
+                                          ]
+
+
+                                          :
+                                          
+                                          [
+                                            Colors.deepPurple,
+                                            Colors.purple
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight)),
+                                  min: oneMonthAgo.millisecondsSinceEpoch.toDouble(),
+                                  max: closestDueDateTime.millisecondsSinceEpoch.toDouble(),
+                                  progressBar: GaugeProgressBar.rounded(
+                                    gradient: GaugeAxisGradient(colors: 
+                                    //null check
+                            
+                                          closestDueDate != null ? 
+                                          closestDueDate! < 3 ? 
+                                          [
+                                            Colors.red,
+                                            Colors.pink
+                                          ]
+                                          :
+
+                                          [
+                                            Colors.deepPurple,
+                                            Colors.purple
+                                          ]
+
+
+                                          :
+                                          
+                                          [
+                                            Colors.deepPurple,
+                                            Colors.purple
+                                          ],),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -374,43 +508,17 @@ class _ClassesPageState extends State<ClassesPage> {
                 ),
               ],
             ),
+            // Display Classes (see Class GridView)
             SizedBox(height: MediaQuery.of(context).size.height / 10),
             Expanded(child: ClassGridView()),
           ],
         ),
-        if (_isAddingClass)
-          Center(
-            child: Container(
-              padding: EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              width: 300,
-              height: 200,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextField(
-                    controller: _classNameController,
-                    decoration: InputDecoration(labelText: 'Class Name'),
-                  ),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      _addNewClass();
-                    },
-                    child: Text('Save'),
-                  ),
-                ],
-              ),
-            ),
-          ),
       ],
     );
   }
 }
 
+//main shell widget => Prevents sidebar from being rebuilt every time you switch screens
 class MainShell extends StatefulWidget {
   final Widget child;
 
@@ -419,7 +527,7 @@ class MainShell extends StatefulWidget {
   @override
   State<MainShell> createState() => _MainShellState();
 }
-
+// isolate shell
 class _MainShellState extends State<MainShell> {
   final _index = Get.find<IndexController>()._index;
 
@@ -427,20 +535,16 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
+        // bottom right button logic
         onPressed: () {
-          // final classGridViewState = StudyApp().classGridViewKey.currentState;
-          // if (classGridViewState != null) {
-          //   classGridViewState.setState(() {
-          //     classGridViewState._isAddingClass = true;
-          //   });
-          // }
-
+          // if im in the study screen
           if (GoRouter.of(context)
               .routeInformationProvider
               .value
               .uri
               .toString()
               .startsWith('/study/')) {
+                // then make the button go to the task screen
             context.go('/add_task/$_index');
           } else if (GoRouter.of(context)
               .routeInformationProvider
@@ -448,6 +552,7 @@ class _MainShellState extends State<MainShell> {
               .uri
               .toString()
               .startsWith('/add_task')) {
+                //prevent button from redirecting when in an important page
             null;
           } else if (GoRouter.of(context)
               .routeInformationProvider
@@ -455,8 +560,10 @@ class _MainShellState extends State<MainShell> {
               .uri
               .toString()
               .startsWith('/add_class')) {
+                //prevent button from redirecting when in an important page
             null;
           } else {
+            // if in home page make it add class
             context.go('/add_class');
             print(GoRouter.of(context).routeInformationProvider.value.uri);
           }
@@ -490,6 +597,7 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
+// create the sidebar so it doesn't have to be rebuilt when it is called again
 class CustomSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -523,6 +631,7 @@ class CustomSidebar extends StatelessWidget {
                   Container(
                       height: 50,
                       width: 50,
+                      // studious logo in the sidebar
                       child: Image(image: AssetImage('assets/logo/logo.png'))),
                   SizedBox(width: 20),
                   Text(
@@ -540,20 +649,14 @@ class CustomSidebar extends StatelessWidget {
                 context.go('/');
               },
             ),
+
             // SidebarItem(
-            //   icon: Icons.book,
-            //   text: 'Study',
+            //   icon: Icons.bar_chart,
+            //   text: 'Statistics',
             //   onTap: () {
-            //     context.go('/study');
+            //     context.go('/statistics');
             //   },
             // ),
-            SidebarItem(
-              icon: Icons.bar_chart,
-              text: 'Statistics',
-              onTap: () {
-                context.go('/statistics');
-              },
-            ),
           ],
         ),
       ),
@@ -598,7 +701,7 @@ class SidebarItem extends StatelessWidget {
   }
 }
 
-// Model for Class
+// StudyClass class
 class StudyClass {
   final String name;
   double taskCompletion;
@@ -612,12 +715,12 @@ class StudyClass {
     required this.tasks,
   });
 
-  StudyClass.fromMap(Map map) 
-    : this.name = map["name"],
-      this.taskCompletion = map["taskCompletion"],
-      this.color = map["color"],
-      this.tasks = map["tasks"];
-  
+// Map converter for saving (not implemented)
+  StudyClass.fromMap(Map map)
+      : this.name = map["name"],
+        this.taskCompletion = map["taskCompletion"],
+        this.color = map["color"],
+        this.tasks = map["tasks"];
 
   Map toMap() {
     return {
@@ -629,28 +732,20 @@ class StudyClass {
   }
 }
 
+// ClassTask class
 class ClassTask {
   final String name;
   bool isCompleted;
+  DateTime dueDate;
 
   ClassTask({
     required this.name,
     required this.isCompleted,
+    required this.dueDate,
   });
-
-  ClassTask.fromMap(Map map) 
-    : this.name = map["name"],
-      this.isCompleted = map["isCompleted"];
-  
-
-  Map toMap() {
-    return {
-      "name": this.name,
-      "isCompleted": this.isCompleted,
-    };
-  }
 }
 
+// Animated Gridview (seen on homescreen)
 class ClassGridView extends StatefulWidget {
   const ClassGridView({Key? key}) : super(key: key);
 
@@ -659,6 +754,7 @@ class ClassGridView extends StatefulWidget {
 }
 
 class _ClassGridViewState extends State<ClassGridView> {
+  // gridview variables
   final ClassesController _classesController = Get.find<ClassesController>();
   int _itemWidth = 4;
   int _hoveredIndex = -1;
@@ -669,9 +765,11 @@ class _ClassGridViewState extends State<ClassGridView> {
   Color _newClassColor = Colors.blue;
 
   @override
+  // initialise state
   void initState() {
     super.initState();
     _loadMoreClasses();
+    //listent to the scroll controller to cahge scroll position when hovered over
     _scrollController.addListener(() {
       if (_scrollController.position.pixels ==
               _scrollController.position.maxScrollExtent &&
@@ -680,42 +778,30 @@ class _ClassGridViewState extends State<ClassGridView> {
       }
     });
 
-    //initialise
     
   }
 
   @override
   void dispose() {
+    //dispose of scroll controller when widget is not active
     _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _loadMoreClasses() async {
+    // load more classes (not needed as local database)
     setState(() {
       _isLoading = true;
     });
 
-    // Simulate network request delay
-    // await Future.delayed(Duration(seconds: 2));
-
-    // List<StudyClass> newClasses = List.generate(10, (index) {
-    //   return StudyClass(
-    //     name: 'Class ${_classesController._classes.length + index + 1}',
-    //     taskCompletion:
-    //         (index + 1) * 10 % 100, // Random task completion percentage
-    //     color: Colors
-    //         .primaries[(_classesController._classes.length + index) % Colors.primaries.length],
-    //   );
-    // });
-
     setState(() {
       _itemWidth = 4;
-      // _classesController._classes.addAll(newClasses);
+
       _isLoading = false;
     });
   }
 
-  void _addClass() {
+  void _addClass() { //function to add class
     if (_newClassName.isNotEmpty) {
       setState(() {
         _classesController._classes.add(StudyClass(
@@ -729,17 +815,20 @@ class _ClassGridViewState extends State<ClassGridView> {
         _newClassColor = Colors.blue;
         Future<void> saveData(String key, String value) async {
           final prefs = await SharedPreferences.getInstance();
-          List<String> usrList = _classesController._classes.map((item) => jsonEncode(item.toMap())).toList();
-
-          // await prefs.setStringList("classes", _classesController._classes.toList());
-}
+          List<String> usrList = _classesController._classes
+              .map((item) => jsonEncode(item.toMap()))
+              .toList();
+        }
       });
     }
   }
 
   @override
+  // access index controller (the index of the current selected class)
   final _indexController = Get.find<IndexController>();
 
+
+  //build method for gridview (any if statements are for resiizing elements to fit different screen sizes)
   Widget build(BuildContext context) {
     return Obx(() {
       return Stack(
@@ -846,29 +935,11 @@ class _ClassGridViewState extends State<ClassGridView> {
                                                           ? 24
                                                           : 16,
                                                   color: Colors.white),
-                                              // style: TextStyle(
-                                              //   fontSize:  _hoveredIndex == index ? 24 : 16,
-                                              //   color: Colors.white,
-                                              // ),
                                             ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    // _hoveredIndex == index ?
-                                    // SizedBox(width: constraints.maxWidth/3)
-                                    // : SizedBox(width: 1),
-                                    //                   if (_hoveredIndex == index)
-                                    // Padding(
-                                    //   padding: const EdgeInsets.only(top: 8.0),
-                                    //   child: SizedBox(
-                                    //     width: double.infinity,
-                                    //     child: Text(
-                                    //       'Additional information about this class',
-                                    //       style: TextStyle(color: Colors.grey, fontSize: 14),
-                                    //     ),
-                                    //   ),
-                                    // ),
                                   ],
                                 ),
                               ),
@@ -881,73 +952,31 @@ class _ClassGridViewState extends State<ClassGridView> {
                 },
               ),
             ),
-          if (_isAddingClass)
-            Center(
-              child: Positioned(
-                left: MediaQuery.of(context).size.width / 4,
-                top: MediaQuery.of(context).size.height / 4,
-                child: Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  width: MediaQuery.of(context).size.width / 2,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        onChanged: (value) {
-                          setState(() {
-                            _newClassName = value;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Enter Class Name',
-                          hintStyle: TextStyle(color: Colors.white),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white),
-                          ),
-                        ),
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: () {
-                          _addClass();
-                        },
-                        child: Text('Save'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       );
     });
   }
 }
 
+// Timer manager for updating gauges
 class TimerManager {
   late Timer _timer;
   late int _remainingSeconds;
   late bool _isRunning = false;
   String timerStatus = 'stopped';
-  // bool timerRunFirstTime;
-  // late int timerFTStart = 200;
 
   TimerManager(int hours, int minutes, int seconds) {
     _remainingSeconds = hours * 3600 + minutes * 60 + seconds;
   }
 
   void startTimer(Function(int, int, int) callback) {
+    // if the timer is not equal to isRunning
     if (!_isRunning) {
+      // start timer 
       _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+        // if the timer is not finished
         if (_remainingSeconds > 0) {
+          // reduce the seconds
           _remainingSeconds--;
           final hours = _remainingSeconds ~/ 3600;
           final minutes = (_remainingSeconds ~/ 60) % 60;
@@ -962,41 +991,37 @@ class TimerManager {
     }
   }
 
+// pause timer
   void pauseTimer() {
     timerStatus = 'paused';
     _timer.cancel();
     _isRunning = false;
   }
 
+// resume timer
   void resumeTimer(Function(int, int, int) callback) {
     timerStatus = 'running';
     startTimer(callback);
   }
 
+// return if the timer is running or not
   bool isRunning() {
     return _isRunning;
   }
 
-  int getStartingTime (hours, minutes, seconds) {
-    // if (timerRunFirstTime == false) {
-    //   timerRunFirstTime == true;
-      // print(hours * 3600 + minutes * 60 + seconds);
-      
-      return hours * 3600 + minutes * 60 + seconds;
-    // } else {
-    //   return timerFTStart;
-    // }
-    
+// get the starting time of the timer
+  int getStartingTime(hours, minutes, seconds) {
+    return hours * 3600 + minutes * 60 + seconds;
   }
 
+// dispose of the timer after use
   void dispose() {
     _timer.cancel(); // Cancel the timer when disposing
     _isRunning = false;
   }
 }
 
-
-
+// study mode page
 class StudyPage extends StatefulWidget {
   final String index;
 
@@ -1009,18 +1034,16 @@ class StudyPage extends StatefulWidget {
 }
 
 class _StudyPageState extends State<StudyPage> {
-
-int _startingHours = 0;
-int _startingMinutes = 45;
-int _startingSeconds = 0;
+  // study page variables
+  int _startingHours = 0;
+  int _startingMinutes = 45;
+  int _startingSeconds = 0;
   // Variables
-int _hours = 0;
-int _minutes = 0;
-int _seconds = 0;
-String timerStatus = 'stopped';
-bool _isInitialized = false;
-
-
+  int _hours = 0;
+  int _minutes = 0;
+  int _seconds = 0;
+  String timerStatus = 'stopped';
+  bool _isInitialized = false;
 
   bool timerStarted = false;
 
@@ -1031,96 +1054,49 @@ bool _isInitialized = false;
   Timer? _timer;
 
   late TimerManager _timerManager;
-  
-  
 
   @override
   void initState() {
+    // initialise the state of the timer
     super.initState();
-    // int secondsLeft = 0;
-    // int minutesLeft = 45;
-    // int hoursLeft = 1;
+
     _timerManager = TimerManager(0, _startingMinutes, 0);
     _timerManager.startTimer((hours, minutes, seconds) {
       setState(() {
         _hours = hours;
         _minutes = minutes;
         _seconds = seconds;
-        
       });
-    // startingTime = _timerManager.getStartingTime(_startingHours, _startingMinutes, _startingSeconds).toDouble();
-    print("initstate called");
-  
-  
+
     
-  });
-
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //   if (!_isInitialized) {
-  //     // Run your one-time initialization code here
-  //     // This code will only run the first time the widget is built
-      
-  //     _isInitialized = true; // Update the flag
-  //     print("didchangedependencies called");
-  //   }
-  // }
-    
-  }
-
-  // void _startCountdown() {
-  //   if (_timer != null && _timer!.isActive)
-  //     return; // Prevent multiple timers from running
-
-  //   setState(() {
-  //     timerStarted = true;
-  //   });
-
-  //   _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      
-  //     setState(() {
-  //       if (secondsLeft > 0) {
-  //         secondsLeft--;
-  //       } else {
-  //         if (minutesLeft > 0) {
-  //           minutesLeft--;
-  //           secondsLeft = 59;
-  //         } else {
-  //           if (hoursLeft > 0) {
-  //             hoursLeft--;
-  //             minutesLeft = 59;
-  //             secondsLeft = 59;
-  //           } else {
-  //             timer.cancel();
-  //           }
-  //         }
-  //       }
-  //     });
-  //   });
-  // }
-  void _toggleTimer() {
-  if (_timerManager.isRunning()) {
-    _timerManager.pauseTimer();
-  } else {
-    _timerManager.resumeTimer((hours, minutes, seconds) {
-      setState(() {
-        _hours = hours;
-        _minutes = minutes;
-        _seconds = seconds;
-      });
     });
   }
-
-}
+// dunction for toggling timer on and off
+  void _toggleTimer() {
+    // if the timer is running
+    if (_timerManager.isRunning()) {
+      // pause it
+      _timerManager.pauseTimer();
+    } else {
+      // if it isn't resume it
+      _timerManager.resumeTimer((hours, minutes, seconds) {
+        setState(() {
+          _hours = hours;
+          _minutes = minutes;
+          _seconds = seconds;
+        });
+      });
+    }
+  }
 
   @override
+  // build method and variables
   final _indexController = Get.find<IndexController>();
   String timerMessage = 'Tap for info';
-  // String timerInfo = 'Create all your tasks before starting timer';
-  
+
   Widget build(BuildContext context) {
     return Container(
+      //TITLE
       padding: EdgeInsets.only(top: 100, left: 40),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1135,31 +1111,26 @@ bool _isInitialized = false;
                   children: [
                     Container(
                       width: 600,
-                      // color: Colors.deepPurple,
                       child: AutoSizeText(
                         _classesController
                             ._classes[_indexController._index].name,
-                            overflow: TextOverflow.ellipsis,
-                            minFontSize: 50,
-                            maxFontSize: 100,
-                            maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        minFontSize: 50,
+                        maxFontSize: 100,
+                        maxLines: 1,
                         style: GoogleFonts.mPlusRounded1c(
                           color: Colors.white,
                           fontSize: 100,
                           fontWeight: FontWeight.bold,
-                        
                         ),
                       ),
                     ),
-                    // SizedBox(
-                    //   width: MediaQuery.of(context).size.width / 4,
-                    // ),
                   ],
                 ),
               ),
               SizedBox(height: 20),
+              //CHECKLIST
               Container(
-                // alignment: Alignment.topCenter,
                 width: MediaQuery.of(context).size.width / 3,
                 height: MediaQuery.of(context).size.height / 4,
                 child: _classesController
@@ -1175,12 +1146,25 @@ bool _isInitialized = false;
                             .tasks
                             .length, // Number of items in the list
                         itemBuilder: (context, index) {
+                          int difference(from, to) {
+                            from = DateTime.now();
+                            to = _classesController
+                                ._classes[_indexController._index]
+                                .tasks[index]
+                                .dueDate;
+                            from = DateTime(from.year, from.month, from.day);
+                            to = DateTime(to.year, to.month, to.day);
+                            return (to.difference(from).inHours / 24).round();
+                          }
+
                           return CheckboxListTile(
                             title: Text(
+                              // checklist name and due date
                               _classesController
-                                  ._classes[_indexController._index]
-                                  .tasks[index]
-                                  .name,
+                                      ._classes[_indexController._index]
+                                      .tasks[index]
+                                      .name +
+                                  ':   Task due in ${difference(0, 0).toString()} day(s)',
                               style: GoogleFonts.mPlusRounded1c(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -1191,16 +1175,21 @@ bool _isInitialized = false;
                                 .tasks[index]
                                 .isCompleted,
                             onChanged: (bool? value) {
-                              List<ClassTask> completedTasks = [];
+                              // if the checkbox is changed
 
+                              // completed tasks list (for tracking task completion percentage)
+                              List<ClassTask> completedTasks = [];
+                              // set the bool to opposite of itself
                               value != value;
-                              // print(value.toString());
+
                               setState(() {
+                                // change the task attribute of isCompleted to the value
                                 _classesController
                                     ._classes[_indexController._index]
                                     .tasks[index]
                                     .isCompleted = value ?? false;
                               });
+                              // for every task in _classsescontroler...tasks
                               for (int task = 0;
                                   task <
                                       _classesController
@@ -1208,16 +1197,19 @@ bool _isInitialized = false;
                                           .tasks
                                           .length;
                                   task++) {
+                                    // if the task is completed
                                 if (_classesController
                                         ._classes[_indexController._index]
                                         .tasks[task]
                                         .isCompleted ==
                                     true) {
+                                      // add it to the completed tasks list 
                                   completedTasks.add(_classesController
                                       ._classes[_indexController._index]
                                       .tasks[task]);
                                 }
                               }
+                              // calculate class completion percentage
                               _classesController
                                       ._classes[_indexController._index]
                                       .taskCompletion =
@@ -1225,16 +1217,10 @@ bool _isInitialized = false;
                                       _classesController
                                           ._classes[_indexController._index]
                                           .tasks
-                                          .length * 100;
-                              print(completedTasks.length);
-                              print(_classesController
-                                  ._classes[_indexController._index]
-                                  .tasks
-                                  .length);
-                              print(_classesController
-                                  ._classes[_indexController._index]
-                                  .taskCompletion);
+                                          .length *
+                                      100;
                             },
+                            // checkbox colors
                             checkColor: Colors.white,
                             activeColor: Colors.blue,
                           );
@@ -1243,6 +1229,7 @@ bool _isInitialized = false;
               ),
             ],
           ),
+          // TIMER
           Container(
             alignment: Alignment.center,
             width: 500,
@@ -1261,9 +1248,13 @@ bool _isInitialized = false;
                   children: [
                     GestureDetector(
                       onTap: () {
-                        print("tapped");
+                        
                         setState(() {
-                          if (_classesController._classes[_indexController._index].tasks.isEmpty == true) {
+                          if (_classesController
+                                  ._classes[_indexController._index]
+                                  .tasks
+                                  .isEmpty ==
+                              true) {
                             showDialog(
                               context: context,
                               builder: (BuildContext context) {
@@ -1271,25 +1262,27 @@ bool _isInitialized = false;
                                   title: Text("Add Task to Access Timer"),
                                 );
                               },
-                              // title: Text("Add Task to Access Timer"),
                             );
-                        } else {
-                          _toggleTimer();
-                          timerMessage = '$_hours : $_minutes : $_seconds';
-                        }
+                          } else {
+                            _toggleTimer();
+                            timerMessage = '$_hours : $_minutes : $_seconds';
+                          }
                         });
                       },
-                      child: AnimatedContainer(
+                      child: 
+                      // TIMER GAUGE
+                      AnimatedContainer(
                         alignment: Alignment.center,
-                      duration: Duration(milliseconds: 200),
-                      height: 160,
-                      width: 160,
-                      decoration: BoxDecoration(
-                        color: _timerManager.isRunning() ? Colors.green : Colors.red,
-                        borderRadius: BorderRadius.circular(100)
-                      ),
+                        duration: Duration(milliseconds: 200),
+                        height: 160,
+                        width: 160,
+                        decoration: BoxDecoration(
+                            color: _timerManager.isRunning()
+                                ? Colors.green
+                                : Colors.red,
+                            borderRadius: BorderRadius.circular(100)),
                         child: Text(
-                         '$_hours : $_minutes : $_seconds',
+                          '$_hours : $_minutes : $_seconds',
                           style: GoogleFonts.mPlusRounded1c(
                             color: Colors.white,
                             fontSize: 20,
@@ -1297,10 +1290,7 @@ bool _isInitialized = false;
                         ),
                       ),
                     ),
-                    // IconButton(
-                    //   onPressed: _startCountdown,
-                    //   icon: Icon(Icons.timer),
-                    // ),
+                    // TASK COMPLETION GAUGE
                     AnimatedRadialGauge(
                       duration: Duration(seconds: 1),
                       value: _hours * 60 * 60 +
@@ -1308,15 +1298,17 @@ bool _isInitialized = false;
                           _seconds.toDouble(),
                       radius: 120,
                       axis: GaugeAxis(
-                        progressBar:
-                            GaugeProgressBar.rounded(gradient: GaugeAxisGradient(colors: [
+                        progressBar: GaugeProgressBar.rounded(
+                          gradient: GaugeAxisGradient(
+                            colors: [
                               Color(0xFF9600FF),
                               Color(0xFFAEBAf8),
-                            ],),),
+                            ],
+                          ),
+                        ),
                         min: 0,
                         max: startingTime,
                         degrees: 360,
-                        // pointer: GaugePointer.circle(radius: 10)
                       ),
                     ),
                   ],
@@ -1324,14 +1316,20 @@ bool _isInitialized = false;
                 SizedBox(
                   height: 200,
                 ),
+                // display task completion
                 Container(
                   alignment: Alignment.center,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      Text(_classesController
-                            ._classes[_indexController._index].taskCompletion.round().toString(), style: GoogleFonts.mPlusRounded1c(color: Colors.white, fontSize: 30),),
-                      
+                      Text(
+                        _classesController
+                            ._classes[_indexController._index].taskCompletion
+                            .round()
+                            .toString(),
+                        style: GoogleFonts.mPlusRounded1c(
+                            color: Colors.white, fontSize: 30),
+                      ),
                       AnimatedRadialGauge(
                         curve: Curves.easeInOutCirc,
                         duration: Duration(seconds: 1),
@@ -1339,18 +1337,17 @@ bool _isInitialized = false;
                             ._classes[_indexController._index].taskCompletion,
                         radius: 120,
                         axis: GaugeAxis(
-                          pointer: GaugePointer.needle(width: 0, height: 0, color: Colors.white),
-                          progressBar: const GaugeProgressBar.rounded(gradient: GaugeAxisGradient(colors: [
-                              Color(0xFFF6EA41),
-                              Color(0xFFF048C6),
-                            ])),
+                          pointer: GaugePointer.needle(
+                              width: 0, height: 0, color: Colors.white),
+                          progressBar: const GaugeProgressBar.rounded(
+                              gradient: GaugeAxisGradient(colors: [
+                            Color(0xFFF6EA41),
+                            Color(0xFFF048C6),
+                          ])),
                           min: 0,
                           max: 100,
                           degrees: 360,
-                          // pointer: GaugePointer.circle(radius: 10)
-                        
                         ),
-                        
                       ),
                     ],
                   ),
@@ -1363,27 +1360,27 @@ bool _isInitialized = false;
     );
   }
 
-
   @override
-void dispose() {
-  _timerManager.dispose(); // Cancel the timer
-  super.dispose();
-}
-
-}
-
-class StatisticsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Statistics Page',
-        style: TextStyle(fontSize: 24, color: Colors.white),
-      ),
-    );
+  //dispose of timer
+  void dispose() {
+    _timerManager.dispose(); 
+    super.dispose();
   }
 }
 
+// class StatisticsPage extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(
+//       child: Text(
+//         'Statistics Page',
+//         style: TextStyle(fontSize: 24, color: Colors.white),
+//       ),
+//     );
+//   }
+// }
+
+// ADDING CLASSES PAGE
 class AddClassPage extends StatefulWidget {
   const AddClassPage({super.key});
 
@@ -1404,6 +1401,7 @@ class _AddClassPageState extends State<AddClassPage> {
 
   @override
   void initState() {
+    // set color settings for color picker
     super.initState();
     screenPickerColor = Colors.blue; // Material blue.
     dialogPickerColor = Colors.red; // Material red.
@@ -1412,6 +1410,7 @@ class _AddClassPageState extends State<AddClassPage> {
 
   @override
   Widget build(BuildContext context) {
+    
     return Container(
       child: Center(
         child: Container(
@@ -1420,6 +1419,7 @@ class _AddClassPageState extends State<AddClassPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 100),
+                // CLASS NAME TEXT FIELD
                 child: TextField(
                   onChanged: (text) {
                     textFieldEntry = text;
@@ -1432,9 +1432,10 @@ class _AddClassPageState extends State<AddClassPage> {
                         borderSide: BorderSide(color: Colors.white)),
                     focusedBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey.shade400)),
-                  ), 
+                  ),
                 ),
               ),
+              // COLOR PICKER
               SizedBox(
                 width: double.infinity,
                 child: Padding(
@@ -1463,11 +1464,13 @@ class _AddClassPageState extends State<AddClassPage> {
                   ),
                 ),
               ),
+            
               SizedBox(
                 height: 100,
               ),
               GestureDetector(
                 onTap: () {
+                  // add new class to the _classes list
                   _classesController._classes.add(StudyClass(
                     name: textFieldEntry,
                     taskCompletion: 0,
@@ -1498,6 +1501,7 @@ class _AddClassPageState extends State<AddClassPage> {
   }
 }
 
+// ADD TASK PAGE
 class AddTaskPage extends StatefulWidget {
   final String index;
 
@@ -1508,10 +1512,32 @@ class AddTaskPage extends StatefulWidget {
 }
 
 class _AddTaskPageState extends State<AddTaskPage> {
+
+  // adding task
+  DateTime? _pickedDate;
   final _classesController = Get.find<ClassesController>();
   final _indexController = Get.find<IndexController>();
+  String taskName = 'NO TASK NAME';
 
   String textFieldEntry = 'No Task Name';
+
+  Future<void> _selectDate(BuildContext context) async {
+
+    // date picker function
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2025),
+    );
+
+    if (pickedDate != null) {
+      // null check
+      setState(() {
+        _pickedDate = pickedDate;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1521,40 +1547,14 @@ class _AddTaskPageState extends State<AddTaskPage> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 100),
-            child: TextField(
-              onSubmitted: (text) {
-                _classesController._classes[_indexController._index].tasks
-                    .add(ClassTask(name: text, isCompleted: false));
-                context.go('/study/' + _indexController._index.toString());
-                // print(_indexController._index);
-                // print(_classesController._classes[int.parse(widget.index)].name);
-                // print(_classesController._classes[int.parse(widget.index)].tasks.last.name);
-                List<ClassTask> completedTasks =  [];
-                for (int task = 0;
-                                  task <
-                                      _classesController
-                                          ._classes[_indexController._index]
-                                          .tasks
-                                          .length;
-                                  task++) {
-                                if (_classesController
-                                        ._classes[_indexController._index]
-                                        .tasks[task]
-                                        .isCompleted ==
-                                    true) {
-                                  completedTasks.add(_classesController
-                                      ._classes[_indexController._index]
-                                      .tasks[task]);
-                                }
-                              }
-                              _classesController
-                                      ._classes[_indexController._index]
-                                      .taskCompletion =
-                                  completedTasks.length /
-                                      _classesController
-                                          ._classes[_indexController._index]
-                                          .tasks
-                                          .length * 100;
+            child: 
+            // TASK NAME FIELD
+            TextField(
+              onChanged: (text) {
+                // _classesController._classes[_indexController._index].tasks
+                //     .add(ClassTask(name: text, isCompleted: false));
+                taskName = text;
+                // context.go('/study/' + _indexController._index.toString());
               },
               style: GoogleFonts.sora(color: Colors.white),
               decoration: InputDecoration(
@@ -1564,6 +1564,86 @@ class _AddTaskPageState extends State<AddTaskPage> {
                     borderSide: BorderSide(color: Colors.white)),
                 focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey.shade400)),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 100,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 100),
+            child: Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple,
+                borderRadius: BorderRadius.circular(10),
+
+              ),
+                child: IconButton(
+              icon: Icon(Icons.date_range, color: Colors.white,),
+              onPressed: () {
+                // date picker
+                _selectDate(context);
+              },
+            )),
+          ),
+          SizedBox(
+            height: 100,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 100),
+            child: GestureDetector(
+              onTap: () {
+                // if the user picked a date
+                if (_pickedDate != null) {
+                  _classesController._classes[_indexController._index].tasks.add(
+
+                    // add the task to the tasks list
+                    ClassTask(
+                        name: taskName,
+                        isCompleted: false,
+                        dueDate: _pickedDate ?? DateTime(2025)));
+
+                // tracking completed tasks again
+                List<ClassTask> completedTasks = [];
+                for (int task = 0;
+                    task <
+                        _classesController
+                            ._classes[_indexController._index].tasks.length;
+                    task++) {
+                  if (_classesController._classes[_indexController._index]
+                          .tasks[task].isCompleted ==
+                      true) {
+                    completedTasks.add(_classesController
+                        ._classes[_indexController._index].tasks[task]);
+                  }
+                }
+                _classesController
+                        ._classes[_indexController._index].taskCompletion =
+                    completedTasks.length /
+                        _classesController
+                            ._classes[_indexController._index].tasks.length *
+                        100;
+                context.go('/study/:${_indexController._index}');
+
+                } 
+                // if the user didn't pick a date
+                else {
+                  showDialog(context: context, builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: Text("Enter date to continue"),
+                    );
+                  });
+                }
+                
+              },
+              child: Container(
+                child: Text("Submit", style: GoogleFonts.sora(color: Colors.white),),
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple,
+                  borderRadius: BorderRadius.circular(50),
+                ),
               ),
             ),
           ),
